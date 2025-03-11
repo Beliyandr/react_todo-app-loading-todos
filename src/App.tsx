@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UserWarning } from './UserWarning';
 import {
   addTodo,
@@ -20,15 +20,21 @@ export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [todo, setTodo] = useState<string>('');
 
+  const inputRef = useRef<null | HTMLElement>(null);
+
   const [activeFilter, setActiveFilter] = useState<filterName>('All');
 
   const filteredTodos = onFilteredTodos(activeFilter);
+
+  console.log(inputRef.current);
 
   if (!USER_ID) {
     return <UserWarning />;
   }
 
-  useEffect(loadPosts, []);
+  useEffect(() => {
+    loadPosts;
+  }, []);
 
   function loadPosts() {
     setLoading(true);
@@ -81,7 +87,7 @@ export const App: React.FC = () => {
       showError('Title should not be empty');
       return;
     }
-
+    setLoading(true);
     addTodo(crateNewTodo(todo))
       .then(newTodo => {
         setTodos(prev => {
@@ -92,7 +98,8 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         showError('Unable to add a todo');
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   const removeTodo = (id: number) => {
@@ -131,8 +138,6 @@ export const App: React.FC = () => {
       .catch(() => showError('Unable to update a todo'));
   }
 
-  // const changeTitleTodo = (todo: Todo) => {};
-
   return (
     <div className="todoapp">
       <h1 className="todoapp__title">todos</h1>
@@ -155,6 +160,8 @@ export const App: React.FC = () => {
               className="todoapp__new-todo"
               placeholder="What needs to be done?"
               onChange={handleChange}
+              disabled={!!loading}
+              // ref={inputRef}
             />
           </form>
         </header>
