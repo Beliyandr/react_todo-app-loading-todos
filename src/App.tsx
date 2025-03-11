@@ -2,14 +2,20 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useState } from 'react';
 import { UserWarning } from './UserWarning';
-import { getTodos, USER_ID } from './api/todos';
+import {
+  addTodo,
+  deleteTodo,
+  getTodos,
+  USER_ID,
+  updateTodo,
+} from './api/todos';
 import { Todo } from './types/Todo';
 import classNames from 'classnames';
 
 export const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
-  const [todos, setTodos] = useState<Todo[]>();
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [todo, setTodo] = useState<string>('');
 
   if (!USER_ID) {
@@ -22,8 +28,19 @@ export const App: React.FC = () => {
     setLoading(true);
     getTodos()
       .then(setTodos)
-      .catch(error => showError('Unable to load todos'))
-      .finally(() => setLoading(false));
+      .catch(() => showError('Unable to load todos'))
+      .finally(() => {
+        setLoading(false);
+      });
+  }
+
+  function crateNewTodo(title: string) {
+    return {
+      completed: false,
+      id: 0,
+      title: title,
+      userId: USER_ID,
+    };
   }
 
   const showError = (text: string) => {
@@ -37,44 +54,59 @@ export const App: React.FC = () => {
     setErrorMsg('');
   };
 
-  const handleSubmitTodo = (event: React.FormEvent<HTMLFormElement>) => {
+  const createTodo = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!todo.trim()) {
       showError('Title should not be empty');
       return;
     }
 
-    setTodos(prev => {
-      const newtodo = {
-        completed: false,
-        createdAt: '2025-03-10T17:34:22.493Z',
-        id: Math.max(todos?.map(todo => todo.id)) || Math.random(),
-        title: todo,
-        updatedAt: '2025-03-10T17:43:24.021Z',
-        userId: 1455,
-      };
-
-      return [...prev, newtodo];
+    addTodo(crateNewTodo(todo)).then(newTodo => {
+      setTodos(prev => {
+        return [...prev, newTodo];
+      });
     });
 
     setTodo('');
-    console.log(todo);
+    reset();
+  };
 
-    // setTodos(prevTodos => {
-    //   const newTodo = {
+  const deleteTodo = (id: number) => {
+    deleteTodo(id);
 
-    //   };
-    //   return {
-    //     ...prevTodos,
-    //     newTodo,
-    //   };
-    // });
+    setTodos(prevTodos => {
+      return prevTodos.filter(todo => todo.id !== id);
+    });
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setErrorMsg('');
     setTodo(event.target.value);
   };
+
+  function reset() {
+    setTodo('');
+  }
+
+  function updateChecked(updatedTodo: Todo) {
+
+
+
+    updateTodo(updatedTodo).then(todo => {
+      setTodos(currentTodos => {
+        const newPosts = [...currentTodos];
+        const index = newPosts.findIndex(todo => todo.id === updatedTodo.id);
+
+        newPosts.splice(index, 1, todo);
+
+        return newPosts;
+      });
+
+      // updateTodo(todo)
+    });
+  }
+
+  // const changeTitleTodo = (todo: Todo) => {};
 
   return (
     <div className="todoapp">
@@ -90,7 +122,7 @@ export const App: React.FC = () => {
           />
 
           {/* Add a todo on form submit */}
-          <form onSubmit={handleSubmitTodo}>
+          <form onSubmit={createTodo} onReset={reset}>
             <input
               data-cy="NewTodoField"
               type="text"
@@ -113,7 +145,11 @@ export const App: React.FC = () => {
                   data-cy="TodoStatus"
                   type="checkbox"
                   className="todo__status"
-                  checked={todo.completed}
+                  onClick={() => {
+                    updateChecked(todo);
+                  }}
+                  onDoubleClick={() => updateTodo(todo)}
+                  // checked={todo.completed}
                 />
               </label>
 
@@ -126,6 +162,7 @@ export const App: React.FC = () => {
                 type="button"
                 className="todo__remove"
                 data-cy="TodoDelete"
+                onClick={() => deleteTodo(todo.id)}
               >
                 ×
               </button>
