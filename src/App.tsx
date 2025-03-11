@@ -12,11 +12,17 @@ import {
 import { Todo } from './types/Todo';
 import classNames from 'classnames';
 
+type filterName = 'All' | 'Active' | 'Complteted';
+
 export const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [todos, setTodos] = useState<Todo[]>([]);
   const [todo, setTodo] = useState<string>('');
+
+  const [activeFilter, setActiveFilter] = useState<filterName>('All');
+
+  const filteredTodos = onFilteredTodos(activeFilter);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -27,11 +33,26 @@ export const App: React.FC = () => {
   function loadPosts() {
     setLoading(true);
     getTodos()
-      .then(setTodos)
+      .then(todos => {
+        setTodos(todos);
+      })
       .catch(() => showError('Unable to load todos'))
       .finally(() => {
         setLoading(false);
       });
+  }
+
+  function onFilteredTodos(filterName: filterName): Todo[] {
+    switch (filterName) {
+      case 'All':
+        return todos;
+      case 'Active':
+        return todos.filter(todo => !todo.completed);
+      case 'Complteted':
+        return todos.filter(todo => !!todo.completed);
+      default:
+        return todos;
+    }
   }
 
   function crateNewTodo(title: string) {
@@ -61,22 +82,27 @@ export const App: React.FC = () => {
       return;
     }
 
-    addTodo(crateNewTodo(todo)).then(newTodo => {
-      setTodos(prev => {
-        return [...prev, newTodo];
+    addTodo(crateNewTodo(todo))
+      .then(newTodo => {
+        setTodos(prev => {
+          return [...prev, newTodo];
+        });
+        setTodo('');
+        reset();
+      })
+      .catch(() => {
+        showError('Unable to add a todo');
       });
-    });
-
-    setTodo('');
-    reset();
   };
 
-  const deleteTodo = (id: number) => {
-    deleteTodo(id);
-
-    setTodos(prevTodos => {
-      return prevTodos.filter(todo => todo.id !== id);
-    });
+  const removeTodo = (id: number) => {
+    deleteTodo(id)
+      .then(() => {
+        setTodos(prevTodos => {
+          return prevTodos.filter(todo => todo.id !== id);
+        });
+      })
+      .catch(() => showError('Unable to delete a todo'));
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,21 +115,20 @@ export const App: React.FC = () => {
   }
 
   function updateChecked(updatedTodo: Todo) {
+    updatedTodo.completed = !updatedTodo.completed;
 
+    updateTodo(updatedTodo)
+      .then(todo => {
+        setTodos(currentTodos => {
+          const newPosts = [...currentTodos];
+          const index = newPosts.findIndex(todo => todo.id === updatedTodo.id);
 
+          newPosts.splice(index, 1, todo);
 
-    updateTodo(updatedTodo).then(todo => {
-      setTodos(currentTodos => {
-        const newPosts = [...currentTodos];
-        const index = newPosts.findIndex(todo => todo.id === updatedTodo.id);
-
-        newPosts.splice(index, 1, todo);
-
-        return newPosts;
-      });
-
-      // updateTodo(todo)
-    });
+          return newPosts;
+        });
+      })
+      .catch(() => showError('Unable to update a todo'));
   }
 
   // const changeTitleTodo = (todo: Todo) => {};
@@ -126,6 +151,7 @@ export const App: React.FC = () => {
             <input
               data-cy="NewTodoField"
               type="text"
+              value={todo}
               className="todoapp__new-todo"
               placeholder="What needs to be done?"
               onChange={handleChange}
@@ -134,7 +160,7 @@ export const App: React.FC = () => {
         </header>
 
         <section className="todoapp__main" data-cy="TodoList">
-          {todos?.map(todo => (
+          {filteredTodos?.map(todo => (
             <div
               data-cy="Todo"
               className={classNames('todo', { completed: todo.completed })}
@@ -162,7 +188,7 @@ export const App: React.FC = () => {
                 type="button"
                 className="todo__remove"
                 data-cy="TodoDelete"
-                onClick={() => deleteTodo(todo.id)}
+                onClick={() => removeTodo(todo.id)}
               >
                 ×
               </button>
@@ -280,34 +306,43 @@ export const App: React.FC = () => {
 
         {/* Hide the footer if there are no todos */}
 
-        {todos?.length && (
+        {filteredTodos?.length && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              3 items left
+              {filteredTodos.length} items left
             </span>
 
             {/* Active link should have the 'selected' class */}
             <nav className="filter" data-cy="Filter">
               <a
                 href="#/"
-                className="filter__link selected"
+                className={classNames('filter__link', {
+                  selected: activeFilter === 'All',
+                })}
                 data-cy="FilterLinkAll"
+                onClick={() => setActiveFilter('All')}
               >
                 All
               </a>
 
               <a
                 href="#/active"
-                className="filter__link"
+                className={classNames('filter__link', {
+                  selected: activeFilter === 'Active',
+                })}
                 data-cy="FilterLinkActive"
+                onClick={() => setActiveFilter('Active')}
               >
                 Active
               </a>
 
               <a
                 href="#/completed"
-                className="filter__link"
+                className={classNames('filter__link', {
+                  selected: activeFilter === 'Complteted',
+                })}
                 data-cy="FilterLinkCompleted"
+                onClick={() => setActiveFilter('Complteted')}
               >
                 Completed
               </a>
