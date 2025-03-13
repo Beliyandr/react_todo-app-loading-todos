@@ -172,7 +172,9 @@ export const App: React.FC = () => {
               {filteredTodos?.map(todoItem => (
                 <div
                   data-cy="Todo"
-                  className={classNames('todo', { completed: todoItem.completed })}
+                  className={classNames('todo', {
+                    completed: todoItem.completed,
+                  })}
                   key={todoItem.id}
                 >
                   <label className="todo__status-label">
